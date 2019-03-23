@@ -5,14 +5,16 @@ void button_init(void);
 void uart2_init(void);
 void dma1_init(void);
 void send_some_data (void);
+void enable_dma1_stream6(void);
 
 #define BASE_ADDR_OF_GPIOC_PERI GPIOC
+char data_stream[] ="Hellow World\r\n";
 
 int main(void)
 {
 	button_init();
 	uart2_init();
-	send_some_data();
+//	send_some_data(); removed for testing the hole project
 	dma1_init();
 	
 	while (1);
@@ -140,33 +142,69 @@ void dma1_init(void)
 	RCC_TypeDef *pRCC;
 	pRCC = RCC;
 	
+	DMA_TypeDef *pDMA;
+	pDMA = DMA1;
+	
+	DMA_Stream_TypeDef *pSTREAM6;
+	pSTREAM6 = DMA1_Stream6;
+	
+	USART_TypeDef *pUART2;
+	pUART2 = USART2;
+	
 	//1. Enable the peripheral clock for the dam1
 	pRCC->AHB1ENR |= ( 1 << 21);
 	
 	//2. Identify the stream which is suitable for your peripheral
+	//channel 4, stream 6
 	
-	//3. Identify the channel number on which UART2 peripheral send
+	//3. Identify the channel number on which UART2 peripheral sends DMA Request
+	//channel 4
+	pSTREAM6->CR &= ~(0x7 << 25);
+	pSTREAM6->CR |= (4 << 25);//Setting
 	
-	//4. Program the source address
+	//4. Program the source address (memory)
+	pSTREAM6->M0AR = (uint32_t) data_stream;
 	
 	//5. Program the destination address
+	pSTREAM6->PAR = (uint32_t) &pUART2->DR;
 	
 	//6. Program number of data items to send
+	uint32_t len = sizeof(data_stream);
+	pSTREAM6->NDTR = len;
 	
 	//7. Direction of data transfer. m2p, p2m m2m
+	pSTREAM6->CR |= (0x1 << 6);
 	
-	//8. Program the source and destination data width
+	//8. Program the source and destination data width (Default values are
+	//already zero, but we cleared anyway)
+	pSTREAM6->CR &= ~(0x1 << 13);
+	pSTREAM6->CR &= ~(0x1 << 11);
+	
+	//8a. Enable memory auto increment
+	pSTREAM6->CR |= (1 << 10);
 	
 	//9. Direct mode or fifo mode
+	pSTREAM6->FCR |= (1 << 2);
 	
 	//10. Select the fifo threshold
+	pSTREAM6->FCR &= ~(0x3 << 0); //Clearing
+	pSTREAM6->FCR |= (0x3 << 0);//Setting
 	
-	//11. Circular mode if required
-	
+	//11. Circular mode if required (Disabled by default, no changes needed)
+		
 	//12. Single Transfer or burst transfer
+	
 	
 	//13. Configure the stream priority 
 	
-	//14. Enable the stream
-	
 }
+
+void enable_dma1_stream6(void)
+{
+	DMA_Stream_TypeDef *pSTREAM6;
+	pSTREAM6 = DMA1_Stream6;
+	
+	//14. Enable the stream
+	pSTREAM6->CR |= (1 << 0);//Setting
+}
+
